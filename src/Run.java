@@ -258,7 +258,6 @@ public class Run {
         } else {
             System.out.println("输入的两个字符串中有空串");
         }
-        scanner.close();
     }
 
     private static List<Node> Read(String filePath) {
