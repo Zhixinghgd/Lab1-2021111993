@@ -1,10 +1,19 @@
-import java.util.*;
+package org.yangtongshen;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Scanner;
+
+import java.util.Set;
+import java.util.HashSet;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 
 public class Run {
-    private static int node_num = 0; // 用于生成Node的id
+    private static int node_num=0; // 用于生成Node的id
 
     public static int[][] graph;
     public static List<Node> nodes;
@@ -21,9 +30,16 @@ public class Run {
     public List<Node> getNodes() {
         return nodes;
     }
+    public static void setNodes(List<Node> nodes) {
+        Run.nodes = nodes;
+    }
+
+    public static void setGraph(int[][] graph) {
+        Run.graph = graph;
+    }
 
     public static void main(String[] args) {
-        String filePath = "C:\\Users\\13836\\IdeaProjects\\RuanGongProject1\\src\\file.txt";
+        String filePath = "./file_long.txt";
         List<Node> nodes = Read(filePath); // 调用read函数并获取Node列表
         // 打印所有Node的信息
         for (Node node : nodes) {
@@ -31,7 +47,7 @@ public class Run {
         }
         System.out.println("目前节点总数" + node_num);
         graph = createGraph(node_num, filePath, nodes);//int[][]
-        drawGraph(graph, nodes);
+        showDirectedGraph(graph, nodes);//画图
         System.out.println("输出邻接矩阵如下：");
         for (int[] row : graph) {
             for (int cell : row) {
@@ -40,7 +56,7 @@ public class Run {
             System.out.println();
         }
         boolean flag = true;
-        Scanner scanner = new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in, "UTF-8");
         while(flag){
             System.out.print("功能1: 查询桥接词\n功能2：根据桥接词生成新文本\n功能3：计算最短路径\n功能4：随机游走\n-1：退出\n ");
             int input = scanner.nextInt();
@@ -50,17 +66,21 @@ public class Run {
             }
             switch (input) {
                 case 1:
-                    readBridgeWord();
+                    readBridgeWord();//功能1: 查询桥接词
                     break;
                 case 2:
-                    createBridgeText(nodes);
+                    generateNewText1();//功能2：根据桥接词生成新文本
                     break;
                 case 3:
-                    jisuanshortestpath(nodes);
+                    jisuanshortestpath(nodes);//功能3：计算最短路径
                     break;
                 case 4:
-                    String result=randomWalk(graph, nodes);
-                    System.out.print(result);
+                    String result=randomWalk(graph, nodes);//功能4：随机游走
+                    System.out.print(result+"\n");
+                default:
+                    // Default case to handle unexpected values
+                   // System.out.println("Invalid number of arguments");
+                    break;
             }
         }
         scanner.close();
@@ -68,13 +88,14 @@ public class Run {
 
     private static void jisuanshortestpath(List<Node> nodes) {
         String start, end;
-        Scanner scanner = new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in, "UTF-8");
         System.out.print("请输入起点词：");
         start = scanner.nextLine();
         System.out.print("请输入终点词：");
         end = scanner.nextLine();
         if (getNodeByName(nodes, start) != null && getNodeByName(nodes, end) != null) {
-            String shortestpath = calcShortestPath(start, end);
+            String shortestpath = null ;
+            shortestpath = calcShortestPath(start, end);
             drawline(graph, nodes, shortestpath);
             if (shortestpath.isEmpty()) {
                 System.out.println(start + "到" + end + "不可达");
@@ -148,6 +169,10 @@ public class Run {
         List<Integer> path = new ArrayList<>();
         int index = j;
         while (index != i) {
+            if (dist[index] == Integer.MAX_VALUE) {
+                // 如果从起点到当前节点的距离是无穷大，说明没有路径
+                return new ArrayList<>(); // 返回空路径
+            }
             path.add(0, index);
             for (int k = 0; k < node_num; k++) {
                 if (graph[k][index] != 0 && dist[index] == dist[k] + graph[k][index]) {
@@ -161,17 +186,28 @@ public class Run {
         return path;
     }
 
-    private static void createBridgeText(List<Node> nodes) {
+    private static void generateNewText1() {
+
         String bridgetext;//读入的
+
+        Scanner scanner = new Scanner(System.in, "UTF-8");
+        System.out.print("请输入一个字符串：");
+        bridgetext = scanner.nextLine();
+
+        String createText1 = generateNewText(bridgetext);
+//        int j;
+        System.out.println("添加桥接词后的字符串为：");
+//        for (j = 0; j < createText.size(); j++) {
+//            System.out.print(createText.get(j) + " ");
+//        }
+        System.out.println(createText1);
+    }
+    public static String generateNewText(String bridgetext){
+        StringBuilder buffer = new StringBuilder();
         String previous_word = "";
         List<String> createText = new ArrayList<String>();
         List<String> createWords = new ArrayList<String>();
-        ;
         int now_Nodeid = 0, previous_Nodeid = 0;
-        Scanner scanner = new Scanner(System.in);
-        System.out.print("请输入一个字符串：");
-        bridgetext = scanner.nextLine();
-        StringBuilder buffer = new StringBuilder();
         for (int i = 0; i < bridgetext.length(); i++) {
             char character = bridgetext.charAt(i);
             if (character >= 'a' && character <= 'z') {
@@ -209,21 +245,43 @@ public class Run {
         // 文件读完，如果缓冲区还有内容，处理最后一个单词
         if (buffer.length() > 0) {
             String nodeName = buffer.toString();
-            createText.add(nodeName);
+            now_Nodeid = getNodeIdByName(nodes, nodeName);
+            if (now_Nodeid == 0) {//输入的词不在词表内
+                // System.out.println("词表中没找到"+nodeName);
+                createText.add(nodeName);
+            } else {
+                if (previous_Nodeid != 0) {//不是第一个词或前一个词在词表内
+                    createWords = queryBridgeWords(previous_word, nodeName);
+                    if (!createWords.isEmpty()) {
+                        createText.add(createWords.get(0));
+                    }
+                    createText.add(nodeName);
+                } else {//是第一个词或前一个词不在词表内
+                    createText.add(nodeName);
+                }
+            }
+
+//            previous_Nodeid = now_Nodeid;
+//            previous_word = nodeName;
+            buffer.setLength(0); // 清空缓冲区
         }
-        int j;
-        System.out.println("添加桥接词后的字符串为：");
-        for (j = 0; j < createText.size(); j++) {
-            System.out.print(createText.get(j) + " ");
-        }
+//        int j;
+//        System.out.println("添加桥接词后的字符串为：");
+//        for (j = 0; j < createText.size(); j++) {
+//            System.out.print(createText.get(j) + " ");
+//        }
+        String createText1 = String.join(" ", createText);
+        return createText1;
         //System.out.println(j);
+
+
     }
 
     private static void readBridgeWord() {
         String words1, words2;
         List<String> bridgeword;
         int i = 0;
-        Scanner scanner = new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in, "UTF-8");
         System.out.print("请输入第一个字符串：");
         words1 = scanner.nextLine();
         System.out.print("请输入第二个字符串：");
@@ -237,23 +295,23 @@ public class Run {
                 bridgeword = queryBridgeWords(words1, words2);
                 if (!bridgeword.isEmpty()) {
                     if (bridgeword.size() == 1) {
-                        System.out.println("The bridge words from " + words1 + " to " + words2 + " is: " + bridgeword.get(0));
+                        System.out.println("The bridge words from " +"\"" + words1 +"\"" + " to " +"\"" + words2 +"\"" + " is: " + bridgeword.get(0));
                     } else {
-                        System.out.print("The bridge words from " + words1 + " to " + words2 + " are: ");
+                        System.out.print("The bridge words from " +"\"" + words1 +"\"" + " to " +"\"" + words2 +"\"" + " are: ");
                         for (i = 0; i < bridgeword.size() - 1; i++) {
                             System.out.print(bridgeword.get(i) + ",");
                         }
                         System.out.println("and" + bridgeword.get(i) + ".");
                     }
                 } else {
-                    System.out.println("No bridge words from " + words1 + " to " + words2);
+                    System.out.println("No bridge words from " +"\"" + words1 +"\"" + " to " +"\"" + words2 +"\"" );
                 }
             } else if (getNodeByName(nodes, words1) == null && getNodeByName(nodes, words2) != null) {
-                System.out.println("No " + words1 + " in the graph!");
+                System.out.println("No " + "\"" +words1 +"\"" + " in the graph!");
             } else if (getNodeByName(nodes, words1) != null && getNodeByName(nodes, words2) == null) {
-                System.out.println("No " + words2 + " in the graph!");
+                System.out.println("No " +"\"" + words2 +"\"" + " in the graph!");
             } else if (getNodeByName(nodes, words1) == null && getNodeByName(nodes, words2) == null) {
-                System.out.println("No " + words1 + " and " + words2 + " in the graph!");
+                System.out.println("No " +"\"" + words1 +"\"" + " and " +"\"" + words2 +"\"" + " in the graph!");
             }
         } else {
             System.out.println("输入的两个字符串中有空串");
@@ -398,10 +456,14 @@ public class Run {
         return graph; // 返回Node列表
     }
 
-    private static List<String> queryBridgeWords(String word1, String word2) {
+    static List<String> queryBridgeWords(String word1, String word2) {
         List<String> bridgeWords = new ArrayList<>();
+        node_num=nodes.toArray().length;
         int id1 = getNodeIdByName(nodes, word1);
         int id2 = getNodeIdByName(nodes, word2);
+        if (id1==0 || id2==0) {
+            return null;
+        }
 
         for (int i = 0; i < node_num; i++) {
             if (graph[id1 - 1][i] != 0) {
@@ -414,8 +476,8 @@ public class Run {
         return bridgeWords;
     }
 
-    private static void drawGraph(int[][] graph, List<Node> nodes) {
-        GraphViz gViz = new GraphViz("C:\\Users\\13836\\IdeaProjects\\RuanGongProject1\\src", "C:\\Program Files\\Graphviz\\bin\\dot.exe");
+    private static void showDirectedGraph(int[][] graph, List<Node> nodes) {
+        GraphViz gViz = new GraphViz("C:\\java\\program\\Lab1", "C:\\Program Files\\Graphviz\\bin\\dot.exe");
         gViz.start_graph();
         for (int i = 0; i < node_num; i++) {
             for (int j = 0; j < node_num; j++) {
@@ -441,7 +503,7 @@ public class Run {
     }
     private static void drawline(int[][] graph, List<Node> nodes,String str) {
         String[] words = splitString(str);
-        GraphViz gViz = new GraphViz("C:\\Users\\13836\\IdeaProjects\\RuanGongProject1\\src", "C:\\Program Files\\Graphviz\\bin\\dot.exe");
+        GraphViz gViz = new GraphViz("C:\\java\\program\\lab3", "C:\\Program Files\\Graphviz\\bin\\dot.exe");
         gViz.start_graph();
         for (int i = 0; i < node_num; i++) {
             for (int j = 0; j < node_num; j++) {
@@ -464,7 +526,7 @@ public class Run {
         }
     }
     public static String randomWalk(int[][] graph, List<Node> nodes) {
-        Random random = new Random();
+        SecureRandom random = new SecureRandom();
         Set<Integer> visitedNodes = new HashSet<>();
         List<String> path = new ArrayList<>();
 
@@ -481,28 +543,22 @@ public class Run {
                     neighbors.add(i);
                 }
             }
-
             // 如果没有邻居节点或者所有邻居节点已经被访问过，则结束遍历
             if (neighbors.isEmpty()) {
                 break;
             }
-
             // 随机选择下一个节点
             int nextNodeIndex = neighbors.get(random.nextInt(neighbors.size()));
-
             // 记录路径
             path.add(nodes.get(nextNodeIndex).name);
-
             // 如果下一个节点已经被访问过，则结束遍历
             if (visitedNodes.contains(nextNodeIndex)) {
                 break;
             }
-
             // 更新当前节点
             currentNodeIndex = nextNodeIndex;
             visitedNodes.add(currentNodeIndex);
         }
-
         // 将路径列表转换为字符串
         StringBuilder result = new StringBuilder();
         for (String nodeName : path) {
